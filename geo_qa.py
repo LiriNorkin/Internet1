@@ -139,7 +139,6 @@ def add_birthday(person, url):
 
 
 def add_area(country, url):
-
     r = requests.get(url)
     doc = lxml.html.fromstring(r.content)
     area = doc.xpath('//table[contains(@class, "infobox")]/tbody/tr//td[text()[contains(.,"km")]]//text()')
@@ -147,20 +146,9 @@ def add_area(country, url):
         area = area[0].split()[0]
     add_to_ontology(country, "area_of", str(area))
 
-def get_from_url(job):
-    dict = {}
-    url = job[1]
-    #print(url)
-    print(url)
-    country = url_to_entity(url)
-    country = question_spaces_to_bottom_line(country)
-    print(country)
+def add_capital(country, url):
     r = requests.get(url)
     doc = lxml.html.fromstring(r.content)
-    president = doc.xpath('//table[contains(@class, "infobox")]/tbody/tr[th//text()="President"]/td//text()')
-    url_president = doc.xpath('//table[contains(@class, "infobox")]/tbody/tr[th//text()="President"]/td//a/@href')
-    prime_minister = doc.xpath('//table[contains(@class, "infobox")]/tbody/tr[th//text()="Prime Minister"]/td//text()')
-    url_prime_minister = doc.xpath('//table[contains(@class, "infobox")]/tbody/tr[th//text()="Prime Minister"]/td//a/@href')
     capital = doc.xpath('//table[contains(@class, "infobox")]/tbody/tr[th//text()="Capital"]//@title')
     if capital:
         capital = question_spaces_to_bottom_line(capital[0])
@@ -171,40 +159,43 @@ def get_from_url(job):
             capital = doc.xpath('//table[contains(@class, "infobox")]/tbody/tr[th//text()="Capital and largest settlement"]//@title')
             capital = question_spaces_to_bottom_line(capital[0])
             add_to_ontology(country, "capital_of", capital)
-    add_area(country, url)
+    ### האם צריך להתייחס למקרים כמו Washington,_D.C.  ###
 
-    #government =
+def add_president_or_prime_minister(country, person, url_person, role):
+    if url_person:
+        url_person = url_person[0]
+    else:
+        url_person = "error"
+    if person:
+        person = person[0]
+        person = question_spaces_to_bottom_line(person)
+        #print(prime_minister)
+        url_person = f"{prefix}{url_person}"
+        add_birthday(person, url_person)
+        #add_birth_location(prime_minister, url_prime_minister)
+        add_to_ontology(country, role, person)
+        add_to_ontology(person, role, country)
+
+def get_from_url(job):
+    dict = {}
+    url = job[1]
+    #print(url)
+    print(url)
+    country = question_spaces_to_bottom_line(url_to_entity(url))
+    print(country)
+    r = requests.get(url)
+    doc = lxml.html.fromstring(r.content)
+    #### אפשר לשלוח לכל פונקציות הבת שלנו את r ו - doc ###
+    president = doc.xpath('//table[contains(@class, "infobox")]/tbody/tr[th//text()="President"]/td//text()')
+    url_president = doc.xpath('//table[contains(@class, "infobox")]/tbody/tr[th//text()="President"]/td//a/@href')
+    prime_minister = doc.xpath('//table[contains(@class, "infobox")]/tbody/tr[th//text()="Prime Minister"]/td//text()')
+    url_prime_minister = doc.xpath('//table[contains(@class, "infobox")]/tbody/tr[th//text()="Prime Minister"]/td//a/@href')
+    add_capital(country, url)
+    add_area(country, url)
     add_government(country, url)
 
-    #population =
-    add_population(country, url)
-
-    if url_president:
-        url_president = url_president[0]
-    else:
-        url_president = "error"
-    if url_prime_minister:
-        url_prime_minister = url_prime_minister[0]
-    else:
-        url_prime_minister = "error"
-    if prime_minister:
-        prime_minister = prime_minister[0]
-        prime_minister = question_spaces_to_bottom_line(prime_minister)
-        #print(prime_minister)
-        url_prime_minister = f"{prefix}{url_prime_minister}"
-        add_birthday(prime_minister, url_prime_minister)
-        #add_birth_location(prime_minister, url_prime_minister)
-        add_to_ontology(country, "prime_minister_of", prime_minister)
-        add_to_ontology(prime_minister, "prime_minister_of", country)
-
-    if president:
-        president = president[0]
-        president = question_spaces_to_bottom_line(president)
-        url_president = f"{prefix}{url_president}"
-        add_birthday(president, url_president)
-        #add_birth_location(president, url_president)
-        add_to_ontology(country, "president_of", president)
-        add_to_ontology(president, "president_of", country)
+    add_president_or_prime_minister(country, president, url_president, "president_of")
+    add_president_or_prime_minister(country, prime_minister, url_prime_minister, "prime_minister_of")
 
 
 def initialize_crawl():
