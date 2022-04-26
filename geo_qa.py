@@ -87,14 +87,11 @@ def add_government(country, url):
     for i in range(len(government)):
         if ('[' in government[i]):
             val_to_remove.append(government[i])
-    #print(val_to_remove)
     for val in val_to_remove:
         government.remove(val)
     government = sorted(government, key=str.lower)
     #print(url)
     #print(government)
-
-
 
     add_to_ontology(country, data_labels[4], str(government))
 
@@ -146,8 +143,9 @@ def add_area(country, url):
     r = requests.get(url)
     doc = lxml.html.fromstring(r.content)
     area = doc.xpath('//table[contains(@class, "infobox")]/tbody/tr//td[text()[contains(.,"km")]]//text()')
-    area_km = area[0].split()[0]
-    add_to_ontology(country, "area_of", area_km)
+    if len(area) > 0:
+        area = area[0].split()[0]
+    add_to_ontology(country, "area_of", str(area))
 
 def get_from_url(job):
     dict = {}
@@ -276,7 +274,7 @@ def question_to_sparql_query(question):
         if question.find("government") != -1:
             part_for_query = question[34:length_q - 1]
             q = "select * where {<http://example.org/"+part_for_query+"> <http://example.org/government> ?x.}"
-            ans = g.query(q)
+            ans = list(g.query(q))
             print("Answer is: ", ans)
 
             # query place
@@ -333,17 +331,17 @@ def question_to_sparql_query(question):
 
 if __name__ == '__main__':
     question = "What is the form of government in Sweden?"
-    #g = rdflib.Graph()
-    #g.parse("ontology.nt", format="nt")
+    g = rdflib.Graph()
+    g.parse("ontology.nt", format="nt")
     #length_q = len(question)
     #print(question.find("<"))
     #part_for_query = question[27:length_q - 6]
-    #print(question_to_sparql_query(question))
+    print(question_to_sparql_query(question))
 
     #from_source_url_to_queue()
     #print(url_to_entity("https://en.wikipedia.org/wiki/Emmanuel_Macron"))
-    initialize_crawl()
-    while True:
-        x = (url_queue.get())
-        add_area(x[1], x[1])
+    #initialize_crawl()
+    #while True:
+    #    x = (url_queue.get())
+    #    add_area(x[1], x[1])
     #add_population('Frace', "https://en.wikipedia.org/wiki/France")
