@@ -11,7 +11,7 @@ import rdflib
 
 
 start = time.time()
-
+countries = []
 visited = set()
 g = rdflib.Graph()
 url_queue = queue.Queue() # queue of urls: (Type, URL), Type = Country / President / Prime_Minister
@@ -63,19 +63,27 @@ def from_source_url_to_queue():
                 url_queue.put(("Country", f"{wiki}{t}"))
             else:
                 url_queue.put(("Country", f"{prefix}{t}"))
-            #countries.append(t[6:len(t)])
+            countries.append(t[6:len(t)])
     #print(inte)
 
 def add_population(country, url):
     r = requests.get(url)
     doc = lxml.html.fromstring(r.content)
-    population = doc.xpath('//a[text()="Population"]/following::tr[1]/td/text()')
-    if len(population) > 0:
+    population = doc.xpath('//table[contains(@class,"infobox")]/tbody//tr[contains(.//text(),"Population")]/following-sibling::tr/td//text()')
+    russia = 'http://en.wikipedia.org/wiki/Russia' # xpath is execption
+    if population:
         population = population[0].split("(")[0]
+        population = str(population).replace(".", ",")
+    elif country == "Russia":
+        population = doc.xpath('//table[contains(@class,"infobox")]/tbody//tr[contains(.//text(),"Population")]/following-sibling::tr/td/div/ul/li/text()')
+        population = population[0]
     #print(country)
-    print(population)
+    #print(population)
     # Russia = //a[text()="Population"]/following::tr[1]/td/div/ul/li/text()
-    #add_to_ontology(country, data_labels[2], population)
+    if population:
+        #print(population)
+        #print(str(population).replace(",", "_"))
+        add_to_ontology(country, data_labels[2].replace(" ", "_"), str(population))
 
 def add_government(country, url):
     r = requests.get(url)
@@ -87,14 +95,11 @@ def add_government(country, url):
     for i in range(len(government)):
         if ('[' in government[i]):
             val_to_remove.append(government[i])
-    #print(val_to_remove)
     for val in val_to_remove:
         government.remove(val)
     government = sorted(government, key=str.lower)
     #print(url)
     #print(government)
-
-
 
     add_to_ontology(country, data_labels[4], str(government))
 
@@ -116,13 +121,14 @@ def add_birth_location(person, url):
 
 def add_birthday(person, url):
     #### שווה בדיקה אם יש תאריכים שהתפספסו ##
-
+    print(person)
     test = ""
-    #print(person)
     r = requests.get(url)
     doc = lxml.html.fromstring(r.content)
     birthday = doc.xpath('//table[contains(@class, "infobox")]/tbody/tr[th//text()="Born"]//span[@class="bday"]//text()')
+    #print(birthday)
     text_date = doc.xpath('//table[contains(@class, "infobox")]/tbody/tr[th//text()="Born"]//td//text()')
+    #print(text_date)
     if text_date:
         for i in text_date:
             #print(i)
@@ -131,22 +137,17 @@ def add_birthday(person, url):
                 break
         if test and len(test) == 10:
             test = replace_hyphens_to_bottom_line(test)
+            print(test)
             add_to_ontology(person, "when_born", test)
-    #else:
-        #print(person)
-    #if birthday:
-    #    birthday = replace_hyphens_to_bottom_line(birthday[0])
-    #    add_to_ontology(person, "when_born", birthday)
-    #else:
-        #print(person)
 
 
 def add_area(country, url):
     r = requests.get(url)
     doc = lxml.html.fromstring(r.content)
     area = doc.xpath('//table[contains(@class, "infobox")]/tbody/tr//td[text()[contains(.,"km")]]//text()')
-    area_km = area[0].split()[0]
-    add_to_ontology(country, "area_of", area_km)
+    if len(area) > 0:
+        area = area[0].split()[0]
+    add_to_ontology(country, "area_of", str(area))
 
 def add_capital(country, url):
     r = requests.get(url)
@@ -195,6 +196,7 @@ def get_from_url(job):
     add_capital(country, url)
     add_area(country, url)
     add_government(country, url)
+    add_population(country, url)
 
     add_president_or_prime_minister(country, president, url_president, "president_of")
     add_president_or_prime_minister(country, prime_minister, url_prime_minister, "prime_minister_of")
@@ -267,7 +269,7 @@ def question_to_sparql_query(question):
         if question.find("government") != -1:
             part_for_query = question[34:length_q - 1]
             q = "select * where {<http://example.org/"+part_for_query+"> <http://example.org/government> ?x.}"
-            ans = g.query(q)
+            ans = list(g.query(q))
             print("Answer is: ", ans)
 
             # query place
@@ -319,11 +321,16 @@ def question_to_sparql_query(question):
         # government form2
         part_for_query2 = question[31:length_q - 1]
 
+        return (part_for_query, part_for_query2)
         # query place
-    return(part_for_query, part_for_query2)
+    # Does prime minister born in <country>?
+    if question.find("Does") != -1:
+        part_for_query = question[28:length_q - 1]
+
+
 
 if __name__ == '__main__':
-    question = "What is the form of government in Sweden?"
+    #question = "What is the form of government in Sweden?"
     #g = rdflib.Graph()
     #g.parse("ontology.nt", format="nt")
     #length_q = len(question)
@@ -334,7 +341,7 @@ if __name__ == '__main__':
     #from_source_url_to_queue()
     #print(url_to_entity("https://en.wikipedia.org/wiki/Emmanuel_Macron"))
     initialize_crawl()
-    while True:
-        x = (url_queue.get())
-        add_area(x[1], x[1])
+    #while True:
+    #    x = (url_queue.get())
+    #    add_population(x[1], x[1])
     #add_population('Frace', "https://en.wikipedia.org/wiki/France")
