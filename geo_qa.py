@@ -69,13 +69,19 @@ def from_source_url_to_queue():
 def add_population(country, url):
     r = requests.get(url)
     doc = lxml.html.fromstring(r.content)
-    population = doc.xpath('//a[text()="Population"]/following::tr[1]/td/text()')
-    if len(population) > 0:
+    population = doc.xpath('//table[contains(@class,"infobox")]/tbody//tr[contains(.//text(),"Population")]/following-sibling::tr/td//text()')
+    russia = 'http://en.wikipedia.org/wiki/Russia' # xpath is execption
+    if len(population) > 0 and country != russia:
         population = population[0].split("(")[0]
-    #print(country)
+        population = str(population).replace(".",",")
+    else:
+        population = doc.xpath('//table[contains(@class,"infobox")]/tbody//tr[contains(.//text(),"Population")]/following-sibling::tr/td/div/ul/li/text()')
+        population = population[0]
+    print(country)
     print(population)
     # Russia = //a[text()="Population"]/following::tr[1]/td/div/ul/li/text()
-    #add_to_ontology(country, data_labels[2], population)
+    if len(population>0):
+        add_to_ontology(country, data_labels[2], str(population))
 
 def add_government(country, url):
     r = requests.get(url)
@@ -129,13 +135,6 @@ def add_birthday(person, url):
         if test and len(test) == 10:
             test = replace_hyphens_to_bottom_line(test)
             add_to_ontology(person, "when_born", test)
-    #else:
-        #print(person)
-    #if birthday:
-    #    birthday = replace_hyphens_to_bottom_line(birthday[0])
-    #    add_to_ontology(person, "when_born", birthday)
-    #else:
-        #print(person)
 
 
 def add_area(country, url):
@@ -321,18 +320,18 @@ def question_to_sparql_query(question):
     return(part_for_query, part_for_query2)
 
 if __name__ == '__main__':
-    question = "What is the form of government in Sweden?"
-    g = rdflib.Graph()
-    g.parse("ontology.nt", format="nt")
+    #question = "What is the form of government in Sweden?"
+    #g = rdflib.Graph()
+    #g.parse("ontology.nt", format="nt")
     #length_q = len(question)
     #print(question.find("<"))
     #part_for_query = question[27:length_q - 6]
-    print(question_to_sparql_query(question))
+    #print(question_to_sparql_query(question))
 
     #from_source_url_to_queue()
     #print(url_to_entity("https://en.wikipedia.org/wiki/Emmanuel_Macron"))
-    #initialize_crawl()
+    initialize_crawl()
     #while True:
     #    x = (url_queue.get())
-    #    add_area(x[1], x[1])
+    #    add_population(x[1], x[1])
     #add_population('Frace', "https://en.wikipedia.org/wiki/France")
