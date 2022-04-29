@@ -63,7 +63,9 @@ def from_source_url_to_queue():
                 url_queue.put(("Country", f"{wiki}{t}"))
             else:
                 url_queue.put(("Country", f"{prefix}{t}"))
+
             countries.append(t[6:len(t)])
+            countries.append(t[6:len(t)].replace("_", ""))
     #print(inte)
 
 def add_population(country, url):
@@ -104,24 +106,33 @@ def add_government(country, url):
     add_to_ontology(country, data_labels[4], str(government))
 
 def add_birth_location(person, url):
+    print(person)
     r = requests.get(url)
     doc = lxml.html.fromstring(r.content)
-    city = doc.xpath('//table[contains(@class, "infobox")]/tbody/tr[th//text()="Born"]//@title')
-    location = doc.xpath('//table[contains(@class, "infobox")]/tbody/tr[th//text()="Born"]/td//text()')
-    #print(city)
-    for i in location:
-        if i == city:
-            location = i+1
+    location_table = doc.xpath('//table[contains(@class, "infobox")]/tbody/tr[th//text()="Born"]/td//text()')
+    location = ""
+    for i in location_table:
+        check = i.replace(" ", "_")
+        if check in countries:
+            location = i
             #print(location)
             break
+        else:
+            # replace chars that can be in string with spaces
+            check = i.replace(" ", "").replace(",", "").replace(".", "").replace(")", "").replace("(", "")
+            #print(check)
+            if check in countries:
+                location = check
+                break
 
     if location:
-        location = question_spaces_to_bottom_line(location[0])
+        location = question_spaces_to_bottom_line(location)
+        print(location)
         add_to_ontology(person, "where_born", location)
 
 def add_birthday(person, url):
     #### שווה בדיקה אם יש תאריכים שהתפספסו ##
-    print(person)
+    #print(person)
     test = ""
     r = requests.get(url)
     doc = lxml.html.fromstring(r.content)
@@ -137,7 +148,7 @@ def add_birthday(person, url):
                 break
         if test and len(test) == 10:
             test = replace_hyphens_to_bottom_line(test)
-            print(test)
+            #print(test)
             add_to_ontology(person, "when_born", test)
 
 
@@ -175,7 +186,7 @@ def add_president_or_prime_minister(country, person, url_person, role):
         #print(prime_minister)
         url_person = f"{prefix}{url_person}"
         add_birthday(person, url_person)
-        #add_birth_location(prime_minister, url_prime_minister)
+        add_birth_location(person, url_person)
         add_to_ontology(country, role, person)
         add_to_ontology(person, role, country)
 
