@@ -1,6 +1,8 @@
 import queue
 import time
 import sys
+import urllib
+
 import requests
 import re
 import traceback
@@ -39,7 +41,7 @@ def add_to_ontology(entity, description, result):
         entity = f"{ontology_prefix}{entity}"
         description = f"{ontology_prefix}{description}"
         result = f"{ontology_prefix}{question_spaces_to_bottom_line(result)}"
-        #print(entity, " ", description, " ", result)
+        #print(entity, " ", description, " ", str(result))
         g.add((rdflib.URIRef(entity), rdflib.URIRef(description), rdflib.URIRef(result)))
 
 def from_source_url_to_queue():
@@ -77,11 +79,11 @@ def add_population(country, url):
     if url == russia:
         print('here')
         population = doc.xpath('//table[contains(@class,"infobox")]/tbody//tr[contains(.//text(),"Population")]/following-sibling::tr/td/div/ul/li/text()')
-        print(population)
+        #print(population)
     if population:
         population = population[0].split("(")[0]
         population = str(population).replace(".", ",").replace(" ","")
-        print(population)
+        #print(population)
         add_to_ontology(country, data_labels[2], str(population))
 
         #print(country)
@@ -92,19 +94,22 @@ def add_population(country, url):
 def add_government(country, url):
     r = requests.get(url)
     doc = lxml.html.fromstring(r.content)
-    government = doc.xpath('//table[contains(@class, "infobox")]/tbody/tr[th//text()="Government"]//a/text()')
+    government = doc.xpath('//table[contains(@class, "infobox")]/tbody/tr[th//text()="Government"]//a/@href')
     government = government[1:]
     val_to_remove = []
-    #print(government)
     for i in range(len(government)):
-        if ('[' in government[i]):
+        government[i] = government[i][6:]
+        government[i] = urllib.parse.unquote(government[i], encoding='utf-8', errors='ignore')
+        if ("'" in government[i]):
+            government[i] = str(government[i]).replace("'", "")
+        if ('[' in government[i] or '#' in government[i] or 'note-' in government[i]):
             val_to_remove.append(government[i])
     for val in val_to_remove:
         government.remove(val)
     government = sorted(government, key=str.lower)
     #print(url)
     if len(government) > 0 :
-        print(government)
+        #print(government)
         add_to_ontology(country, data_labels[4], str(government))
 
 def add_birth_location(person, url):
@@ -126,7 +131,6 @@ def add_birth_location(person, url):
             if check in countries:
                 location = check
                 break
-
     if location:
         location = question_spaces_to_bottom_line(location)
         #print(location)
@@ -160,7 +164,7 @@ def add_area(country, url):
     area = doc.xpath('//table[contains(@class, "infobox")]/tbody/tr//td[text()[contains(.,"km")]]//text()')
     if len(area) > 0:
         area = str(area[0].split()[0])
-        print(area)
+        #print(area)
         add_to_ontology(country, "area", area)
 
 def add_capital(country, url):
@@ -231,12 +235,10 @@ def initialize_crawl():
 
 
 
-
-
 # *** Part 2 - Answer Questions ***
 
 def find_part_for_query(question):
-    question = question[1:-1]
+    #question = question[1:-1]
     length_q = len(question)
     question = question_spaces_to_bottom_line(question)
     print(question)
@@ -414,6 +416,6 @@ if __name__ == '__main__':
     #print(url_to_entity("https://en.wikipedia.org/wiki/Emmanuel_Macron"))
     #initialize_crawl()
     #while True:
-    #    x = (url_queue.get())
-    #    add_population(x[1], x[1])
-    #add_population('Frace', "https://en.wikipedia.org/wiki/France")
+        #x = (url_queue.get())
+        #add_government(x[1], x[1])
+    #add_government('Syria', "http://en.wikipedia.org/wiki/Syria")
