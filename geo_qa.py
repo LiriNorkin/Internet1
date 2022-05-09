@@ -159,7 +159,7 @@ def add_area(country, url):
     doc = lxml.html.fromstring(r.content)
     area = doc.xpath('//table[contains(@class, "infobox")]/tbody/tr//td[text()[contains(.,"km")]]//text()')
     if len(area) > 0:
-        area = str(area[0].split()[0]).replace(".",",")
+        area = str(area[0].split()[0])
         print(area)
         add_to_ontology(country, "area", area)
 
@@ -240,82 +240,81 @@ def find_part_for_query(question):
     length_q = len(question)
     question = question_spaces_to_bottom_line(question)
     print(question)
-    case1 = False
-    case2 = False
     part_for_query = ""
     part_for_query2 = ""
     relation = ""
-    # question starting with Who
+    switch_case = ["1", "area", "find_entity"]
 
+    # question starting with Who
     if question.find("Who") != -1:
+
         # Who is the president of <country>?
         if question.find("president") != -1:
             part_for_query = question[24:length_q - 1]
             relation = "president"
-            case1 = True
+            case = switch_case[0]
+
         # Who is the prime minister of <country>?
         elif question.find("prime") != -1:
             part_for_query = question[29:length_q - 1]
             relation = "prime_minister"
-            case1 = True
+            case = switch_case[0]
+
         # Who is <entity>?
         else:
             part_for_query = question[7:length_q - 1]
-            relation = "find_entity"
+            case = switch_case[2]
+            #relation = ""
 
     # question starting with What
     if question.find("What") != -1:
+        case = switch_case[0]
 
         # What is the area of <country>?
         if question.find("area") != -1:
             part_for_query = question[20:length_q - 1]
             relation = "area"
-            case1 = True
+            case = switch_case[1]
         # What is the population of <country>?
         if question.find("population") != -1:
             part_for_query = question[26:length_q - 1]
             relation = "population"
-            case1 = True
+
         # What is the capital of <country>?
         if question.find("capital") != -1:
             part_for_query = question[23:length_q - 1]
             relation = "capital"
-            case1 = True
-        # What is the form of government in <country>?
 
+        # What is the form of government in <country>?
         if question.find("government") != -1:
             part_for_query = question[34:length_q - 1]
             relation = "government"
-            case1 = True
 
     # question starting with When
     if question.find("When") != -1:
+
         # When was the president of <country> born?
         if question.find("president") != -1:
             part_for_query = question[26:length_q - 6]
             relation = "when_born"
-            case1 = True
 
         # When was the prime minister of <country> born?
         if question.find("prime") != -1:
             part_for_query = question[31:length_q - 6]
             relation = "when_born"
-            case1 = True
 
     # question starting with where
     if question.find("Where") != -1:
+
         # Where was the president of <country> born?
         if question.find("president") != -1:
             part_for_query = question[27:length_q - 6]
             relation = "where_born"
-            case1 = True
 
         # Where was the prime minister of <country> born?
         if question.find("prime") != -1:
             part_for_query = question[32:length_q - 6]
             relation = "where_born"
-            case1 = True
-            # query place
 
     # How many presidents were born in <country>?
     if question.find("were_born_in") != -1:
@@ -343,11 +342,11 @@ def find_part_for_query(question):
 
 
 
-    if case1:
-        return "select * where {<http://example.org/" + part_for_query + "> <http://example.org/" + relation + "> ?a.}" , case1
+    if case == switch_case[0]  or case == switch_case[1]:
+        return "select * where {<http://example.org/" + part_for_query + "> <http://example.org/" + relation + "> ?a.}" , case
     else:
         # <film> <starring> <person>
-        return "select * where {<http://example.org/" + part_for_query2 + "> <http://example.org/" + relation + "> <http://example.org/" + entity1 + ">.}"
+        return "select * where {<http://example.org/" + part_for_query2 + "> <http://example.org/" + relation + "> <http://example.org/" + part_for_query + ">.}"
 
     # If the question is general:
     if question.find("How_many_films_are_based_on_books?") != -1:
@@ -370,7 +369,7 @@ def find_part_for_query(question):
 def question():
     input_question = sys.argv[2]
     input_question = question_spaces_to_bottom_line(input_question)
-    query, case1 = find_part_for_query(input_question)
+    query, case = find_part_for_query(input_question)
     print(query)
     g = rdflib.Graph()
     g.parse("ontology.nt", format="nt")
@@ -378,7 +377,7 @@ def question():
     #print(list(query_result))
 
     res_string = ""
-    if case1:
+    if case == "1" or case == "area":
         for i in range (len(list(query_result))):
             row = list(query_result)[i] # get row i from query list result.
             entity_with_uri = str(row[0])
@@ -396,6 +395,8 @@ def question():
             res_string += names[j]+", "
         res_string = res_string[0:len(res_string)-2] #remove the last ', ' in the string
         res_string = res_string.replace("_", " ")
+        if case == "area":
+            res_string += " km squared"
     print(res_string)
     return res_string
 
