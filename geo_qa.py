@@ -460,6 +460,7 @@ def find_part_for_query(question):
         return "select ?a where {?a <http://example.org/" + relation + "> ?b. filter(contains(lcase(str(?b)),'"+part_for_query+"'))}", case
 
     # If the question is general:
+
     #if question.find("How_many_films_are_based_on_books?") != -1:
         #return "select (COUNT(*) AS ?count) where {?a <http://example.org/Based_on> <http://example.org/yes>.}"
 
