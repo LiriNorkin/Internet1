@@ -327,7 +327,7 @@ def find_part_for_query(question):
     part_for_query = ""
     part_for_query2 = ""
     relation = ""
-    switch_case = ["1", "area", "are_also","find_entity","when_born","where_born","how_many_pres","list_all", "ERROR"]
+    switch_case = ["1", "area", "are_also","find_entity","when_born","where_born","how_many_pres","list_all","8", "ERROR"]
     president = False
     prime_minister = False
     case = 0
@@ -428,10 +428,14 @@ def find_part_for_query(question):
         part_for_query2 = question[are_also+9:length_q - 1]
         case = switch_case[2]
 
-        # Does prime minister born in <country>?
-        if question.find("Does") != -1:
-            part_for_query = question[28:length_q - 1]
-
+    # Does prime minister born in <country>?
+    if question.find("Does") != -1:
+        in_ = question.find("in")
+        part_for_query = question[in_+3:length_q - 1]
+        case = switch_case[8]
+        relation = "where_born"
+        born = question.find("born")
+        part_for_query2 = question[5:born-1]
 
     if case == switch_case[0]  or case == switch_case[1]:
         return "select * where {<http://example.org/" + part_for_query + "> <http://example.org/" + relation + "> ?a.}" , case
@@ -459,11 +463,12 @@ def find_part_for_query(question):
     elif case == switch_case[7]:
         return "select ?a where {?a <http://example.org/" + relation + "> ?b. filter(contains(lcase(str(?b)),'"+part_for_query+"'))}", case
 
-    # If the question is general:
-
-    #if question.find("How_many_films_are_based_on_books?") != -1:
-        #return "select (COUNT(*) AS ?count) where {?a <http://example.org/Based_on> <http://example.org/yes>.}"
-
+    # extra question -
+    # Does <prime minister> born in <country>?
+    elif case == switch_case[8]:
+        real_country = "select ?a where {<http://example.org/" + part_for_query2 + "> <http://example.org/" + relation + "> ?a.}"
+        case = part_for_query + case
+        return real_country, case
     # If the input question doesn't any pattern:
     case = switch_case[-1]
     return "ERROR", case
@@ -485,7 +490,7 @@ def question():
     if case == 'are_also' or case == 'how_many_pres':
         print(len(list(query_result)))
         return len(list(query_result))
-    elif case == "1" or case == "area" or case == "where_born" or case=="list_all":
+    elif case == "1" or case == "area" or case == "where_born" or case=="list_all" or case[-1] == "8":
         for i in range (len(list(query_result))):
             row = list(query_result)[i]
             entity_with_uri = str(row[0])
@@ -526,6 +531,9 @@ def question():
             entity_without_uri = entity_with_uri[-1]
             entity_without_uri = entity_without_uri.replace("_", "-")
             res_string = entity_without_uri
+
+    if case[-1] == "8":
+        res_string = case[:-1] == res_string
     print(res_string)
     return res_string
 
