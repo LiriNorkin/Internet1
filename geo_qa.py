@@ -457,6 +457,7 @@ def find_part_for_query(question):
 
     #How many presidents were born in <country>?
     elif case == switch_case[6]:
+        #print(part_for_query)
         return "select ?a where {?a <http://example.org/president> ?x. ?a <http://example.org/" + relation + "> <http://example.org/" + part_for_query + ">. }", case
 
     #List all countries whose capital name contains the string <str>
@@ -512,16 +513,21 @@ def question():
             res_string += " km squared"
     elif case == "find_entity":
         res_string = ""
-        query_result = str(list(query_result)[0]).split(",")
-        query_result = [x.replace("(", "").replace(")", "") for x in query_result]
-        query_result = query_result[::-1]
-        for query in query_result:
-            entity_with_uri = query.split("/")
-            entity_without_uri = entity_with_uri[-1][:-1]
-            entity_without_uri = entity_without_uri.replace("_", " ")
-            if entity_without_uri == "president":
-                entity_without_uri = "President of "
+        for i in range(len(query_result)):
+            query_result_i = str(list(query_result)[i]).split(",")
+            query_result_i = [x.replace("(", "").replace(")", "") for x in query_result_i]
+            query_result_i = query_result_i[::-1]
+            entity_with_uri = [x.split("/") for x in query_result_i]
+            entity_without_uri = entity_with_uri[0][-1] + entity_with_uri[1][-1]
+            entity_without_uri = entity_without_uri.replace("_", " ").replace("'", "")
+            if entity_without_uri[:9] == "president":
+                entity_without_uri = "President of " + entity_without_uri[9:]
+            elif entity_without_uri[:14] == "prime minister":
+                entity_without_uri = "Prime minister of " + entity_without_uri[14:]
+
             res_string += entity_without_uri
+            if len(query_result)>1 and i < len(query_result) - 1:
+                res_string += ", "
 
     elif case == "when_born":
         for i in range(len(list(query_result))):
@@ -532,12 +538,14 @@ def question():
             entity_without_uri = entity_without_uri.replace("_", "-")
             res_string = entity_without_uri
 
-    if case[-1] == "8":
+    elif case[-1] == "8":
         res_string = case[:-1] == res_string
+
     print(res_string)
     return res_string
 
 if __name__ == '__main__':
+
     #question1 = "What is the form of government in Sweden?"
     question()
     #g = rdflib.Graph()
