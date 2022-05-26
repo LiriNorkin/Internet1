@@ -475,8 +475,8 @@ def find_part_for_query(question):
     return "ERROR", case
 
 
-def question():
-    input_question = sys.argv[2]
+def question(input_question):
+
     #print(input_question)
     input_question = data_spaces_to_underlines(input_question)
     query, case = find_part_for_query(input_question)
@@ -545,23 +545,8 @@ def question():
     return res_string
 
 if __name__ == '__main__':
-
-    #question1 = "What is the form of government in Sweden?"
-    question()
-    #g = rdflib.Graph()
-    #g.parse("ontology.nt", format="nt")
-    #length_q = len(question)
-    #print(question.find("<"))
-    #part_for_query = question[27:length_q - 6]
-    #print(question_to_sparql_query(question))
-    #url_source = 'http://en.wikipedia.org/wiki/Syria'
-    #r = requests.get(url_source)
-    #doc = lxml.html.fromstring(r.content)
-    #from_source_url_to_queue()
-    #print(url_to_entity("https://en.wikipedia.org/wiki/Emmanuel_Macron"))
-    #initialize_crawl()
-    #while True:
-        #x = (url_queue.get())
-        #print(x)
-        #add_government(x[1], x[1])
-    #add_government('Syria', doc)
+    mood = sys.argv[1]
+    if mood == "question":
+        question(sys.argv[2])
+    elif mood == "create":
+        initialize_crawl()
