@@ -8,7 +8,8 @@ import re
 import traceback
 import lxml.html
 import rdflib
-from dateutil.parser import parse
+#from dateutil.parser import parse
+
 
 ### PART 1: Crawler & Extraction from infobox to ontology
 
@@ -145,8 +146,8 @@ def add_government(country, doc):
     government = sorted(government, key=str.lower)
     #print(url)
     if len(government) > 0 :
-        #print(government)
-        add_to_ontology(country, data_labels[4], str(government))
+        for gov in government:
+            add_to_ontology(country, data_labels[4], str(gov))
 
 def add_birth_location(person, url):
     """"
@@ -322,12 +323,14 @@ def find_part_for_query(question):
     #question = question[1:-1]
     length_q = len(question)
     question = data_spaces_to_underlines(question)
-    print(question)
+    #print(question)
     part_for_query = ""
     part_for_query2 = ""
     relation = ""
-    switch_case = ["1", "area", "find_entity"]
-
+    switch_case = ["1", "area", "are_also","find_entity","when_born","where_born","how_many_pres","list_all","8", "ERROR"]
+    president = False
+    prime_minister = False
+    case = 0
     # question starting with Who
     if question.find("Who") != -1:
 
@@ -346,7 +349,8 @@ def find_part_for_query(question):
         # Who is <entity>?
         else:
             part_for_query = question[7:length_q - 1]
-            case = switch_case[2]
+            case = switch_case[3]
+            #print(part_for_query)
             #relation = ""
 
     # question starting with What
@@ -375,104 +379,130 @@ def find_part_for_query(question):
 
     # question starting with When
     if question.find("When") != -1:
-
+        relation = "when_born"
         # When was the president of <country> born?
         if question.find("president") != -1:
             part_for_query = question[26:length_q - 6]
-            relation = "when_born"
+            case = switch_case[4]
+            president = True
 
         # When was the prime minister of <country> born?
-        if question.find("prime") != -1:
+        elif question.find("prime") != -1:
             part_for_query = question[31:length_q - 6]
-            relation = "when_born"
+            case = switch_case[4]
+            prime_minister = True
 
     # question starting with where
     if question.find("Where") != -1:
-
+        relation = "where_born"
         # Where was the president of <country> born?
         if question.find("president") != -1:
             part_for_query = question[27:length_q - 6]
-            relation = "where_born"
+            case = switch_case[5]
+            president = True
 
         # Where was the prime minister of <country> born?
-        if question.find("prime") != -1:
+        elif question.find("prime") != -1:
             part_for_query = question[32:length_q - 6]
-            relation = "where_born"
+            case = switch_case[5]
+            prime_minister = True
 
     # How many presidents were born in <country>?
     if question.find("were_born_in") != -1:
         part_for_query = question[33:length_q-1]
-
-        # query place
+        case = switch_case[6]
+        relation = "where_born"
 
     # List all countries whose capital name contains the string <str>
     if question.find("List_all") != -1:
         part_for_query = question[58:length_q]
-
-        # query place
+        case = switch_case[7]
+        relation = "capital"
 
     # How many <government_form1> are also <government_form2>?
     if question.find("are_also") != -1:
         # government form1
-        part_for_query = question[9:length_q - 23]
+        are_also = question.find("are_also")
+        part_for_query = question[9:are_also-1]
         # government form2
-        part_for_query2 = question[31:length_q - 1]
+        part_for_query2 = question[are_also+9:length_q - 1]
+        case = switch_case[2]
 
-
-        # Does prime minister born in <country>?
-        if question.find("Does") != -1:
-            part_for_query = question[28:length_q - 1]
-
-
+    # Does prime minister born in <country>?
+    if question.find("Does") != -1:
+        in_ = question.find("in")
+        part_for_query = question[in_+3:length_q - 1]
+        case = switch_case[8]
+        relation = "where_born"
+        born = question.find("born")
+        part_for_query2 = question[5:born-1]
 
     if case == switch_case[0]  or case == switch_case[1]:
         return "select * where {<http://example.org/" + part_for_query + "> <http://example.org/" + relation + "> ?a.}" , case
-    else:
-        # <film> <starring> <person>
-        return "select * where {<http://example.org/" + part_for_query2 + "> <http://example.org/" + relation + "> <http://example.org/" + part_for_query + ">.}"
 
-    # If the question is general:
-    if question.find("How_many_films_are_based_on_books?") != -1:
-        return "select (COUNT(*) AS ?count) where {?a <http://example.org/Based_on> <http://example.org/yes>.}"
+    # <gov1> <are also> <gov 2>
+    elif case == switch_case[2]:
+        return "select DISTINCT ?a where {?a <http://example.org/government> <http://example.org/" + part_for_query + ">. ?a <http://example.org/government> <http://example.org/" + part_for_query2 + ">.}", case
 
-    if question.find("How_many_films_starring") != -1:
-        entity1 = question[24:length_q - 22]
-        return "select (COUNT(*) AS ?count) where {?a <http://example.org/Starring> <http://example.org/" + entity1 + ">.}"
+    #Who is <entity>?
+    elif case == switch_case[3]:
+        return "select ?a ?b where {?a ?b  <http://example.org/" + part_for_query + ">.}" , case
 
-    if question.find("are_also") != -1:
-        input_question = question[9:length_q - 1]
-        occupations = input_question.split("_are_also_")
-        #        return "select * where {?a <http://example.org/Occupation> <http://example.org/"+occupations[0]+">. ?a <http://example.org/Occupation> <http://example.org/"+occupations[1]+"> .}"
-        return "select (COUNT(?a) AS ?count) where {?a <http://example.org/Occupation> <http://example.org/" + \
-               occupations[0] + ">. ?a <http://example.org/Occupation> <http://example.org/" + occupations[1] + "> .}"
-    # If the input question do not match any of the above:
-    return "ERROR: illegal question format."
+    #When/Where was the president/prime minister of <country> born?
+    elif case == switch_case[4] or case == switch_case[5]:
+        if president:
+            return "select DISTINCT ?a where {?x <http://example.org/president> <http://example.org/" + part_for_query + ">. ?x <http://example.org/" + relation + "> ?a.}", case
+        if prime_minister:
+            return "select DISTINCT ?a where {?x <http://example.org/prime_minister> <http://example.org/" + part_for_query + ">. ?x <http://example.org/" + relation + "> ?a.}", case
+
+    #How many presidents were born in <country>?
+    elif case == switch_case[6]:
+        #print(part_for_query)
+        return "select ?a where {?a <http://example.org/president> ?x. ?a <http://example.org/" + relation + "> <http://example.org/" + part_for_query + ">. }", case
+
+    #List all countries whose capital name contains the string <str>
+    elif case == switch_case[7]:
+        return "select ?a where {?a <http://example.org/" + relation + "> ?b. filter(contains(lcase(str(?b)),'"+part_for_query+"'))}", case
+
+    # extra question -
+    # Does <prime minister> born in <country>?
+    elif case == switch_case[8]:
+        real_country = "select ?a where {<http://example.org/" + part_for_query2 + "> <http://example.org/" + relation + "> ?a.}"
+        case = part_for_query + case
+        return real_country, case
+    # If the input question doesn't any pattern:
+    case = switch_case[-1]
+    return "ERROR", case
 
 
-def question():
-    input_question = sys.argv[2]
-    print(input_question)
+def question(input_question):
+
+    #print(input_question)
     input_question = data_spaces_to_underlines(input_question)
     query, case = find_part_for_query(input_question)
-    print(query)
+    if case == "ERROR":
+        return("ERROR")
     g = rdflib.Graph()
     g.parse("ontology.nt", format="nt")
     query_result = g.query(query)
     #print(list(query_result))
 
     res_string = ""
-    if case == "1" or case == "area":
+    if case == 'are_also' or case == 'how_many_pres':
+        print(len(list(query_result)))
+        return len(list(query_result))
+    elif case == "1" or case == "area" or case == "where_born" or case=="list_all" or case[-1] == "8":
         for i in range (len(list(query_result))):
-            row = list(query_result)[i] # get row i from query list result.
+            row = list(query_result)[i]
             entity_with_uri = str(row[0])
             entity_with_uri = entity_with_uri.split("/")
             entity_without_uri = entity_with_uri[-1]
-            #the next 3 code lines are to strip excessive spaces in the names.
+            #strip excessive spaces.
             entity_without_uri = entity_without_uri.replace("_"," ")
             entity_without_uri = entity_without_uri.strip()
             entity_without_uri = entity_without_uri.replace(" ","_")
-            res_string += entity_without_uri+" " #get the entity name without the uri.
-        names = res_string.split() #split the string to sort the names lexicographically
+            res_string += entity_without_uri + " "
+        names = res_string.split()
         names.sort()
         res_string = ""
         for j in range (len(list(names))): #build string of names separated by ', '
@@ -481,23 +511,42 @@ def question():
         res_string = res_string.replace("_", " ")
         if case == "area":
             res_string += " km squared"
+    elif case == "find_entity":
+        res_string = ""
+        for i in range(len(query_result)):
+            query_result_i = str(list(query_result)[i]).split(",")
+            query_result_i = [x.replace("(", "").replace(")", "") for x in query_result_i]
+            query_result_i = query_result_i[::-1]
+            entity_with_uri = [x.split("/") for x in query_result_i]
+            entity_without_uri = entity_with_uri[0][-1] + entity_with_uri[1][-1]
+            entity_without_uri = entity_without_uri.replace("_", " ").replace("'", "")
+            if entity_without_uri[:9] == "president":
+                entity_without_uri = "President of " + entity_without_uri[9:]
+            elif entity_without_uri[:14] == "prime minister":
+                entity_without_uri = "Prime minister of " + entity_without_uri[14:]
+
+            res_string += entity_without_uri
+            if len(query_result)>1 and i < len(query_result) - 1:
+                res_string += ", "
+
+    elif case == "when_born":
+        for i in range(len(list(query_result))):
+            row = list(query_result)[i]
+            entity_with_uri = str(row[0])
+            entity_with_uri = entity_with_uri.split("/")
+            entity_without_uri = entity_with_uri[-1]
+            entity_without_uri = entity_without_uri.replace("_", "-")
+            res_string = entity_without_uri
+
+    elif case[-1] == "8":
+        res_string = case[:-1] == res_string
+
     print(res_string)
     return res_string
 
 if __name__ == '__main__':
-    #question1 = "What is the form of government in Sweden?"
-    #question()
-    #g = rdflib.Graph()
-    #g.parse("ontology.nt", format="nt")
-    #length_q = len(question)
-    #print(question.find("<"))
-    #part_for_query = question[27:length_q - 6]
-    #print(question_to_sparql_query(question))
-
-    #from_source_url_to_queue()
-    #print(url_to_entity("https://en.wikipedia.org/wiki/Emmanuel_Macron"))
-    initialize_crawl()
-    #while True:
-        #x = (url_queue.get())
-        #add_government(x[1], x[1])
-    #add_government('Syria', "http://en.wikipedia.org/wiki/Syria")
+    mood = sys.argv[1]
+    if mood == "question":
+        question(sys.argv[2])
+    elif mood == "create":
+        initialize_crawl()
