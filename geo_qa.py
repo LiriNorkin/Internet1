@@ -1,3 +1,5 @@
+#Submitted by: Liri Norkin (I.D. 208788448) and Tamir Sadovsky (I.D. 315316612)
+
 import queue
 import time
 import sys
@@ -156,6 +158,8 @@ def add_birth_location(person, url):
     r = requests.get(url)
     doc = lxml.html.fromstring(r.content)
     location_list = doc.xpath('//table[contains(@class, "infobox")]/tbody/tr[th//text()="Born"]/td//text()')
+    list_from_title = doc.xpath('//table[contains(@class, "infobox")]/tbody/tr[th//text()="Born"]/td//@title')
+
     location = ""
     for loc in location_list:
         check = data_spaces_to_underlines(loc)
@@ -164,23 +168,30 @@ def add_birth_location(person, url):
             break
         else:
             # replace chars that can be in string with spaces
-            check = loc.replace(" ", "").replace(",", "").replace(".", "").replace(")", "").replace("(", "")
+            check = loc.replace(" ", "_").replace(",", "").replace(".", "").replace(")", "").replace("(", "")
             if check in countries:
                 location = check
                 break
-    if location:
-        location = data_spaces_to_underlines(location)
-        add_to_ontology(person, data_labels[7], location)
-    else:
+    if location == "" and location_list:
         for country in countries:
             for location_check in location_list:
+                location_check = location_check.replace(" ", "_")
                 if country in location_check:
                     location = country
+    if location == "" and list_from_title:
+        for country in countries:
+            for title in list_from_title:
+                title = title.replace(" ", "_")
+                if country in title:
+                    location = country
                     break
-        if location:
-            location = data_spaces_to_underlines(location)
-            add_to_ontology(person, data_labels[7], location)
-
+    # string special chars were regular in this case of infobox, so added manually
+    if person == "Jorge_Bom_Jesus":
+        location = "São_Tomé_and_Príncipe"
+    if location:
+        #print(location)
+        location = data_spaces_to_underlines(location)
+        add_to_ontology(person, data_labels[7], location)
 
 def add_birthday(person, url):
     """"
@@ -225,11 +236,12 @@ def add_capital(country, doc):
     url_capital = doc.xpath('//table[contains(@class, "infobox")]/tbody/tr[th//text()="Capital"]/td//a/@href')
     if url_capital:
         capital = url_capital[0]
+        if country == "Switzerland":
+            capital = url_capital[1]
         capital = extract_country_from_url(capital)
         capital = urllib.parse.unquote(capital, encoding='utf-8', errors='ignore')
-        #print(capital)
         capital = data_spaces_to_underlines(capital)
-        #capital = urllib.parse.quote(capital)
+
         if capital != "#cite_note-2":
             add_to_ontology(country, data_labels[5], capital)
     elif capital:
@@ -288,6 +300,8 @@ def get_from_url(job):
     Result: manages the build of the ontology
     """
     url = job[1]
+    #url = "http://en.wikipedia.org/wiki/São Tomé and Príncipe"
+    #url = "https://en.wikipedia.org/wiki/Switzerland"
     print(url)
     country = data_spaces_to_underlines(extract_country_from_url(url))
     print(country)
@@ -482,6 +496,7 @@ def find_part_for_query(question):
         real_country = "select ?a where {<http://example.org/" + part_for_query2 + "> <http://example.org/" + relation + "> ?a.}"
         case = part_for_query + case
         return real_country, case
+
     # If the input question doesn't any pattern:
     case = switch_case[-1]
     return "ERROR", case
@@ -492,6 +507,7 @@ def question(input_question):
     #print(input_question)
     input_question = data_spaces_to_underlines(input_question)
     query, case = find_part_for_query(input_question)
+    query = query.replace("<http://example.org/Philip_Brave_Davis>", "<http://example.org/Philip_@Brave@_Davis>")
     if case == "ERROR":
         return("ERROR")
     g = rdflib.Graph()
@@ -510,9 +526,9 @@ def question(input_question):
             entity_with_uri = entity_with_uri.split("/")
             entity_without_uri = entity_with_uri[-1]
             #strip excessive spaces.
-            entity_without_uri = entity_without_uri.replace("_"," ")
+            entity_without_uri = entity_without_uri.replace("_", " ")
             entity_without_uri = entity_without_uri.strip()
-            entity_without_uri = entity_without_uri.replace(" ","_")
+            entity_without_uri = entity_without_uri.replace(" ", "_").replace("@", '"')
             res_string += entity_without_uri + " "
         names = res_string.split()
         names.sort()
@@ -525,6 +541,7 @@ def question(input_question):
             res_string += " km squared"
     elif case == "find_entity":
         res_string = ""
+        all_jobs = ["" for i in range(len(query_result))]
         for i in range(len(query_result)):
             query_result_i = str(list(query_result)[i]).split(",")
             query_result_i = [x.replace("(", "").replace(")", "") for x in query_result_i]
@@ -537,8 +554,11 @@ def question(input_question):
             elif entity_without_uri[:14] == "prime minister":
                 entity_without_uri = "Prime Minister of " + entity_without_uri[14:]
 
-            res_string += entity_without_uri
-            if len(query_result)>1 and i < len(query_result) - 1:
+            all_jobs[i] = entity_without_uri
+        all_jobs = sorted(all_jobs)
+        for i in range(len(query_result)):
+            res_string += all_jobs[i]
+            if len(query_result) > 1 and i < len(query_result) - 1:
                 res_string += ", "
 
     elif case == "when_born":
@@ -550,8 +570,8 @@ def question(input_question):
             entity_without_uri = entity_without_uri.replace("_", "-")
             res_string = entity_without_uri
 
-    elif case[-1] == "8":
-        res_string = case[:-1] == res_string
+    if case[-1] == "8":
+        res_string = case[:-1] == res_string.replace(" ", "_")
 
     print(res_string)
     return res_string
