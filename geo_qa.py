@@ -557,7 +557,7 @@ def question(input_question):
             res_string = entity_without_uri
 
     if case[-1] == "8":
-        res_string = case[:-1] == res_string
+        res_string = case[:-1] == res_string.replace(" ", "_")
 
     print(res_string)
     return res_string
