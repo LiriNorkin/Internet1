@@ -482,6 +482,7 @@ def find_part_for_query(question):
         real_country = "select ?a where {<http://example.org/" + part_for_query2 + "> <http://example.org/" + relation + "> ?a.}"
         case = part_for_query + case
         return real_country, case
+
     # If the input question doesn't any pattern:
     case = switch_case[-1]
     return "ERROR", case
@@ -492,6 +493,7 @@ def question(input_question):
     #print(input_question)
     input_question = data_spaces_to_underlines(input_question)
     query, case = find_part_for_query(input_question)
+    query = query.replace("<http://example.org/Philip_Brave_Davis>", "<http://example.org/Philip_@Brave@_Davis>")
     if case == "ERROR":
         return("ERROR")
     g = rdflib.Graph()
@@ -512,7 +514,7 @@ def question(input_question):
             #strip excessive spaces.
             entity_without_uri = entity_without_uri.replace("_"," ")
             entity_without_uri = entity_without_uri.strip()
-            entity_without_uri = entity_without_uri.replace(" ","_")
+            entity_without_uri = entity_without_uri.replace(" ","_").replace("@",'"')
             res_string += entity_without_uri + " "
         names = res_string.split()
         names.sort()
@@ -525,6 +527,7 @@ def question(input_question):
             res_string += " km squared"
     elif case == "find_entity":
         res_string = ""
+        all_jobs = ["" for i in range(len(query_result))]
         for i in range(len(query_result)):
             query_result_i = str(list(query_result)[i]).split(",")
             query_result_i = [x.replace("(", "").replace(")", "") for x in query_result_i]
@@ -537,7 +540,10 @@ def question(input_question):
             elif entity_without_uri[:14] == "prime minister":
                 entity_without_uri = "Prime Minister of " + entity_without_uri[14:]
 
-            res_string += entity_without_uri
+            all_jobs[i] = entity_without_uri
+        all_jobs = sorted(all_jobs)
+        for i in range(len(query_result)):
+            res_string += all_jobs[i]
             if len(query_result)>1 and i < len(query_result) - 1:
                 res_string += ", "
 
@@ -550,7 +556,7 @@ def question(input_question):
             entity_without_uri = entity_without_uri.replace("_", "-")
             res_string = entity_without_uri
 
-    elif case[-1] == "8":
+    if case[-1] == "8":
         res_string = case[:-1] == res_string
 
     print(res_string)
