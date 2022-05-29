@@ -9,6 +9,7 @@ import re
 import traceback
 import lxml.html
 import rdflib
+from urllib.parse import quote
 
 ### PART 1: Crawler & Extraction from infobox to ontology
 
@@ -73,8 +74,6 @@ def from_source_url_to_queue():
     """
     r = requests.get(url_source)
     doc = lxml.html.fromstring(r.content)
-    special = [163, 196, 203]
-    count = 0
     inte = 0
     for t in doc.xpath('//*[@id="mw-content-text"]/div[1]/table/tbody//tr/td[1]//a[@title]/@href'):
         if t not in visited:
@@ -83,17 +82,14 @@ def from_source_url_to_queue():
             visited.add(t)
             #print(("Country", f"{prefix}{t}"))
             if "%" in t:
-                t = doc.xpath('//*[@id="mw-content-text"]/div[1]/table/tbody//tr/td[1]//a[@title]/@title')
-                t = t[special[count]]
-                count = count + 1
-                wiki = prefix + wiki_pre
+                t = urllib.parse.unquote(t)
+                wiki = prefix
                 wiki = data_spaces_to_underlines(wiki)
-                #print(t)
                 url_queue.put((data_labels[6], f"{wiki}{t}"))
             else:
-                url_queue.put((data_labels[6], f"{prefix}{t}"))
-
-            if t[6:len(t)] != "o" and t[6:len(t)] != "n":
+                if t != "/wiki/French_Fifth_Republic" and t != "/wiki/Realm_of_New_Zealand" and t != "/wiki/Danish_Realm" and t != "/wiki/Kingdom_of_the_Netherlands":
+                    url_queue.put((data_labels[6], f"{prefix}{t}"))
+            if t[6:len(t)] != "o" and t[6:len(t)] != "n" and t[6:len(t)] != "French_Fifth_Republic" and t[6:len(t)] != "Realm_of_New_Zealand" and t[6:len(t)] != "Danish_Realm" and t[6:len(t)] != "Kingdom_of_the_Netherlands":
                 countries.append(t[6:len(t)])
                 countries.append(remove_underlines(t[6:len(t)]))
     #print(inte)
@@ -299,6 +295,8 @@ def get_from_url(job):
 
     Result: manages the build of the ontology
     """
+    print(len(countries))
+    #print(countries)
     url = job[1]
     #url = "http://en.wikipedia.org/wiki/São Tomé and Príncipe"
     #url = "https://en.wikipedia.org/wiki/Switzerland"
@@ -337,6 +335,7 @@ def initialize_crawl():
     """
     # queue of urls
     from_source_url_to_queue()
+    print(len(list(url_queue.queue)))
     while not url_queue.empty():
         job = url_queue.get()
         # print(job)
