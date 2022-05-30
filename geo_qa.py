@@ -106,6 +106,10 @@ def add_population(country, doc):
     if country == "Russia":
         #print('here')
         population = doc.xpath('//table[contains(@class,"infobox")]/tbody//tr[contains(.//text(),"Population")]/following-sibling::tr/td/div/ul/li/text()')
+    elif country == "Dominican_Republic":
+        population = doc.xpath('//*[@id="mw-content-text"]/div[1]/table[1]/tbody/tr[37]/td/span/text()')
+    elif country == "Channel_Islands":
+        population = doc.xpath('//*[@id="mw-content-text"]/div[1]/table[1]/tbody/tr[21]/td/text()[1]')
     if population:
         population = population[0].split("(")[0]
         population = str(population).replace(".", ",").replace(" ", "")
@@ -114,8 +118,7 @@ def add_population(country, doc):
 
         #print(country)
         #print(population)
-        # Russia = //a[text()="Population"]/following::tr[1]/td/div/ul/li/text()
-        #print(str(population).replace(",", "_"))
+
 
 def add_government(country, doc):
     """"
@@ -142,6 +145,7 @@ def add_government(country, doc):
     if len(government) > 0:
         for gov in government:
             add_to_ontology(country, data_labels[4], str(gov))
+    #print(government)
 
 def add_birth_location(person, url):
     """"
@@ -295,11 +299,9 @@ def get_from_url(job):
 
     Result: manages the build of the ontology
     """
-    print(len(countries))
+    #print(len(countries))
     #print(countries)
     url = job[1]
-    #url = "http://en.wikipedia.org/wiki/São Tomé and Príncipe"
-    #url = "https://en.wikipedia.org/wiki/Switzerland"
     print(url)
     country = data_spaces_to_underlines(extract_country_from_url(url))
     print(country)
@@ -335,7 +337,7 @@ def initialize_crawl():
     """
     # queue of urls
     from_source_url_to_queue()
-    print(len(list(url_queue.queue)))
+    #print(len(list(url_queue.queue)))
     while not url_queue.empty():
         job = url_queue.get()
         # print(job)
@@ -538,6 +540,8 @@ def question(input_question):
         res_string = res_string.replace("_", " ")
         if case == "area":
             res_string += " km squared"
+        if res_string == "579,330or392,040": # Execption in Maldives
+            res_string = "579,330 or 392,040"
     elif case == "find_entity":
         res_string = ""
         all_jobs = ["" for i in range(len(query_result))]
