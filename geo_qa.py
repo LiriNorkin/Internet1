@@ -1,4 +1,4 @@
-#Submitted by: Liri Norkin (I.D. 208788448) and Tamir Sadovsky (I.D. 315316612)
+# Submitted by: Liri Norkin (I.D. 208788448) and Tamir Sadovsky (I.D. 315316612)
 
 import queue
 import time
@@ -11,8 +11,7 @@ import lxml.html
 import rdflib
 from urllib.parse import quote
 
-### PART 1: Crawler & Extraction from infobox to ontology
-
+# PART 1: Crawler & Extraction from infobox to ontology
 
 start = time.time()
 countries = []
@@ -62,8 +61,8 @@ def add_to_ontology(entity, description, result):
         entity = f"{ontology_prefix}{entity}"
         description = f"{ontology_prefix}{description}"
         result = f"{ontology_prefix}{data_spaces_to_underlines(result)}"
-        #print(entity, " ", description, " ", str(result))
         g.add((rdflib.URIRef(entity), rdflib.URIRef(description), rdflib.URIRef(result)))
+
 
 def from_source_url_to_queue():
     """
@@ -78,9 +77,7 @@ def from_source_url_to_queue():
     for t in doc.xpath('//*[@id="mw-content-text"]/div[1]/table/tbody//tr/td[1]//a[@title]/@href'):
         if t not in visited:
             inte = inte + 1
-            #print(t)
             visited.add(t)
-            #print(("Country", f"{prefix}{t}"))
             if "%" in t:
                 t = urllib.parse.unquote(t)
                 wiki = prefix
@@ -92,7 +89,7 @@ def from_source_url_to_queue():
             if t[6:len(t)] != "o" and t[6:len(t)] != "n" and t[6:len(t)] != "French_Fifth_Republic" and t[6:len(t)] != "Realm_of_New_Zealand" and t[6:len(t)] != "Danish_Realm" and t[6:len(t)] != "Kingdom_of_the_Netherlands":
                 countries.append(t[6:len(t)])
                 countries.append(remove_underlines(t[6:len(t)]))
-    #print(inte)
+
 
 def add_population(country, doc):
     """
@@ -104,18 +101,16 @@ def add_population(country, doc):
     """
     population = doc.xpath('//table[contains(@class,"infobox")]/tbody//tr[contains(.//text(),"Population")]/following-sibling::tr/td//text()')
     if country == "Russia":
-        #print('here')
         population = doc.xpath('//table[contains(@class,"infobox")]/tbody//tr[contains(.//text(),"Population")]/following-sibling::tr/td/div/ul/li/text()')
+    elif country == "Dominican_Republic":
+        population = doc.xpath('//*[@id="mw-content-text"]/div[1]/table[1]/tbody/tr[37]/td/span/text()')
+    elif country == "Channel_Islands":
+        population = doc.xpath('//*[@id="mw-content-text"]/div[1]/table[1]/tbody/tr[21]/td/text()[1]')
     if population:
         population = population[0].split("(")[0]
         population = str(population).replace(".", ",").replace(" ", "")
-        #print(population)
         add_to_ontology(country, data_labels[2], str(population))
 
-        #print(country)
-        #print(population)
-        # Russia = //a[text()="Population"]/following::tr[1]/td/div/ul/li/text()
-        #print(str(population).replace(",", "_"))
 
 def add_government(country, doc):
     """"
@@ -138,10 +133,10 @@ def add_government(country, doc):
     for val in val_to_remove:
         government.remove(val)
     government = sorted(government, key=str.lower)
-    #print(url)
     if len(government) > 0:
         for gov in government:
             add_to_ontology(country, data_labels[4], str(gov))
+
 
 def add_birth_location(person, url):
     """"
@@ -185,9 +180,9 @@ def add_birth_location(person, url):
     if person == "Jorge_Bom_Jesus":
         location = "São_Tomé_and_Príncipe"
     if location:
-        #print(location)
         location = data_spaces_to_underlines(location)
         add_to_ontology(person, data_labels[7], location)
+
 
 def add_birthday(person, url):
     """"
@@ -197,14 +192,13 @@ def add_birthday(person, url):
 
     Result: adds the data to the ontology
     """
-    #print(person)
     r = requests.get(url)
     doc = lxml.html.fromstring(r.content)
     birthday = doc.xpath('//table[contains(@class, "infobox")]/tbody/tr[th//text()="Born"]//span[@class="bday"]//text()')
-    #print(birthday)
     if birthday:
         birthday = data_hyphens_to_underlines(birthday[0])
         add_to_ontology(person, data_labels[8], birthday)
+
 
 def add_area(country, doc):
     """"
@@ -217,8 +211,8 @@ def add_area(country, doc):
     area = doc.xpath('//table[contains(@class, "infobox")]/tbody/tr//td[text()[contains(.,"km")]]//text()')
     if len(area) > 0:
         area = str(area[0].split()[0])
-        #print(area)
         add_to_ontology(country, data_labels[3], area)
+
 
 def add_capital(country, doc):
     """"
@@ -249,6 +243,7 @@ def add_capital(country, doc):
             capital = data_spaces_to_underlines(capital[0])
             capital = urllib.parse.quote(capital)
             add_to_ontology(country, data_labels[5], capital)
+
 
 def add_president_or_prime_minister(country, person, url_person, role):
     """"
@@ -284,6 +279,7 @@ def add_president_or_prime_minister(country, person, url_person, role):
             add_to_ontology(country, role, person)
             add_to_ontology(person, role, country)
 
+
 def get_from_url(job):
     """"
     Main function.
@@ -295,14 +291,10 @@ def get_from_url(job):
 
     Result: manages the build of the ontology
     """
-    print(len(countries))
-    #print(countries)
     url = job[1]
-    #url = "http://en.wikipedia.org/wiki/São Tomé and Príncipe"
-    #url = "https://en.wikipedia.org/wiki/Switzerland"
-    print(url)
+    # print(url)
     country = data_spaces_to_underlines(extract_country_from_url(url))
-    print(country)
+    # print(country)
     r = requests.get(url)
     doc = lxml.html.fromstring(r.content)
 
@@ -326,6 +318,7 @@ def get_from_url(job):
     add_president_or_prime_minister(country, president, url_president, data_labels[0])
     add_president_or_prime_minister(country, prime_minister, url_prime_minister, data_labels[1])
 
+
 def initialize_crawl():
     """
     This function manages the queue of country links.
@@ -335,20 +328,17 @@ def initialize_crawl():
     """
     # queue of urls
     from_source_url_to_queue()
-    print(len(list(url_queue.queue)))
     while not url_queue.empty():
         job = url_queue.get()
-        # print(job)
         get_from_url(job)
     g.serialize("ontology.nt", encoding='utf-8', format="nt")
 
 # *** Part 2 - Answer Questions ***
 
+
 def find_part_for_query(question):
-    #question = question[1:-1]
     length_q = len(question)
     question = data_spaces_to_underlines(question)
-    #print(question)
     part_for_query = ""
     part_for_query2 = ""
     relation = ""
@@ -375,8 +365,6 @@ def find_part_for_query(question):
         else:
             part_for_query = question[7:length_q - 1]
             case = switch_case[3]
-            #print(part_for_query)
-            #relation = ""
 
     # question starting with What
     if question.find("What") != -1:
@@ -502,8 +490,6 @@ def find_part_for_query(question):
 
 
 def question(input_question):
-
-    #print(input_question)
     input_question = data_spaces_to_underlines(input_question)
     query, case = find_part_for_query(input_question)
     query = query.replace("<http://example.org/Philip_Brave_Davis>", "<http://example.org/Philip_@Brave@_Davis>")
@@ -512,7 +498,6 @@ def question(input_question):
     g = rdflib.Graph()
     g.parse("ontology.nt", format="nt")
     query_result = g.query(query)
-    #print(list(query_result))
 
     res_string = ""
     if case == 'are_also' or case == 'how_many_pres':
@@ -538,6 +523,8 @@ def question(input_question):
         res_string = res_string.replace("_", " ")
         if case == "area":
             res_string += " km squared"
+        if res_string == "579,330or392,040": # Execption in Maldives
+            res_string = "579,330 or 392,040"
     elif case == "find_entity":
         res_string = ""
         all_jobs = ["" for i in range(len(query_result))]
@@ -574,6 +561,7 @@ def question(input_question):
 
     print(res_string)
     return res_string
+
 
 if __name__ == '__main__':
     mood = sys.argv[1]
